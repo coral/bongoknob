@@ -99,8 +99,6 @@ impl ToString for Command {
             }
         };
 
-        dbg!(&val.to_string());
-
         val.to_string()
     }
 }

@@ -9,7 +9,6 @@ description = "Nano_D++ Ratchet H1 protocol in Rust"
 repository = "https://github.com/coral/bongoknob"
 
 [dependencies]
-anyhow = "1.0.86"
 bytes = "1.7.1"
 serialport = { version = "4.5.0", features = ["usbportinfo-interface"] }
 thiserror = "1.0.63"

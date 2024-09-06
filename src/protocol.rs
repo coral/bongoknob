@@ -39,6 +39,7 @@ pub enum Command {
     Recalibrate,
     ShowMessage(MessageDetails),
     SetScreen(ScreenData),
+    SetSettings(Settings),
 }
 
 impl ToString for Command {
@@ -75,7 +76,14 @@ impl ToString for Command {
                     screen: msg.clone()
                 })
             }
+            Command::SetSettings(settings) => {
+                json!(SettingsRoot {
+                    settings: settings.clone()
+                })
+            }
         };
+
+        dbg!(&val.to_string());
 
         val.to_string()
     }
@@ -239,7 +247,8 @@ pub struct KeyDef {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct KeyPress {
-    pub r#type: String, // "type" is a reserved keyword in Rust, so we use "r#type"
+    #[serde(rename = "type")]
+    pub key_type: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -253,7 +262,8 @@ pub struct Knob {
     pub step: u8,
     pub key_state: u8,
     pub haptic: Haptic,
-    pub r#type: String, // "type" is a reserved keyword in Rust, so we use "r#type"
+    #[serde(rename = "type")]
+    pub knob_type: String,
     pub channel: u8,
     pub cc: u8,
 }
@@ -284,28 +294,42 @@ pub struct SettingsRoot {
     pub settings: Settings,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
-    pub debug: bool,
-    pub led_max_brightness: u8,
-    pub max_velocity: u8,
-    pub max_voltage: u8,
-    pub device_orientation: u8,
-    pub device_name: String,
-    pub wifi_enabled: bool,
-    pub serial_number: String,
-    pub firmware_version: String,
-    pub midi_usb: MidiSettings,
-    pub midi2: MidiSettings,
-    pub sysex_id: u8,
-    pub idle_timeout: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub debug: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub led_max_brightness: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_velocity: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_voltage: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub device_orientation: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub device_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wifi_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub serial_number: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub firmware_version: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub midi_usb: Option<MidiSettings>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub midi2: Option<MidiSettings>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sysex_id: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub idle_timeout: Option<u32>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct MidiSettings {
-    pub r#in: bool, // "in" is a reserved keyword in Rust, so we use "r#in"
+    #[serde(rename = "in")]
+    pub input: bool,
     pub out: bool,
     pub thru: bool,
     pub route: bool,

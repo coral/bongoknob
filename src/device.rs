@@ -249,6 +249,11 @@ impl Device {
     }
 
     // SET
+    pub fn set_settings(&self, data: protocol::Settings) -> Result<(), Error> {
+        self.command(Command::SetSettings(data)).unwrap();
+        Ok(())
+    }
+
     pub fn set_screen(&self, data: protocol::ScreenData) -> Result<(), Error> {
         self.command(Command::SetScreen(data)).unwrap();
         Ok(())

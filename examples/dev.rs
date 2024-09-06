@@ -23,6 +23,14 @@ fn main() -> Result<()> {
             )
             .unwrap();
 
+        // update some settings
+        device.set_settings(bongoknob::Settings {
+            led_max_brightness: Some(150),
+            device_orientation: Some(1),
+            ..Default::default()
+        })?;
+
+        // subscribe to messages
         let pipe = device.subscribe();
 
         loop {

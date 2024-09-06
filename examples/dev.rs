@@ -15,27 +15,34 @@ fn main() -> Result<()> {
         let profiles = device.get_profiles()?;
         dbg!(&profiles);
 
-        device
-            .set_message(
-                Some("Helloooo".to_string()),
-                Some("wohoooooooo".to_string()),
-                Some(599999.0),
-            )
-            .unwrap();
+        let profile = device.get_profile("GRASSY HOPPER")?;
+        dbg!(&profile);
 
-        // update some settings
-        device.set_settings(bongoknob::Settings {
-            led_max_brightness: Some(150),
-            device_orientation: Some(1),
-            ..Default::default()
-        })?;
+        // device
+        //     .set_message(
+        //         Some("Helloooo".to_string()),
+        //         Some("wohoooooooo".to_string()),
+        //         Some(599999.0),
+        //     )
+        //     .unwrap();
+
+        // // update some settings
+        // device.set_settings(bongoknob::Settings {
+        //     led_max_brightness: Some(150),
+        //     device_orientation: Some(1),
+        //     ..Default::default()
+        // })?;
 
         // subscribe to messages
         let pipe = device.subscribe();
 
         loop {
-            let message = pipe.recv_timeout(std::time::Duration::from_secs(10))?;
-            println!("Received message: {:?}", message);
+            let message = match pipe.recv_timeout(std::time::Duration::from_secs(10)) {
+                Ok(message) => message,
+                Err(_) => continue,
+            };
+
+            println!("{}", message);
         }
     }
 

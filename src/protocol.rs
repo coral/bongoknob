@@ -1,6 +1,5 @@
-use serde::de::{self, MapAccess, Visitor};
-use serde::Serialize;
-use serde::{Deserialize, Deserializer};
+use serde::de::{self, MapAccess, SeqAccess, Visitor};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::json;
 use std::fmt;
 
@@ -10,7 +9,10 @@ impl TryFrom<&str> for Message {
     fn try_from(value: &str) -> Result<Self, crate::Error> {
         match serde_json::from_str(value) {
             Ok(m) => Ok(m),
-            Err(e) => Err(crate::Error::ParseError(e)),
+            Err(e) => {
+                println!("Parse error: {:?}", e);
+                Err(crate::Error::ParseError(e))
+            }
         }
     }
 }
@@ -27,7 +29,21 @@ pub enum Message {
     Settings(SettingsRoot),
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+impl fmt::Display for Message {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Message::Error(e) => write!(f, "Error: {:?}", e),
+            Message::Heartbeat(h) => write!(f, "Heartbeat: {:?}", h),
+            Message::Saved(s) => write!(f, "Saved: {:?}", s),
+            Message::Event(e) => write!(f, "Event: {}", e),
+            Message::Profiles(p) => write!(f, "Profiles: {:?}", p),
+            Message::Profile(pr) => write!(f, "Profile: {:?}", pr),
+            Message::Settings(s) => write!(f, "Settings: {:?}", s),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum Command {
     GetProfiles,
@@ -112,10 +128,50 @@ pub enum Event {
     Key(KeyEvent),
 }
 
+impl fmt::Display for Event {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Event::Position(pos) => write!(f, "Position: {}", pos),
+            Event::Key(key) => write!(f, "{}", key),
+        }
+    }
+}
+
 #[derive(Serialize, Debug, Clone)]
 pub enum KeyEvent {
     Down { keys: [bool; 4], id: u8 },
     Up { keys: [bool; 4], id: u8 },
+}
+
+impl fmt::Display for KeyEvent {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            KeyEvent::Down { keys: _, id } => {
+                write!(f, "[DOWN] Key: {}, State: {}", id, self.pretty_print())
+            }
+            KeyEvent::Up { keys: _, id } => {
+                write!(f, "[UP] Key: {}, State: {}", id, self.pretty_print())
+            }
+        }
+    }
+}
+
+impl KeyEvent {
+    fn pretty_print(&self) -> String {
+        let (keys, _) = match self {
+            KeyEvent::Down { keys, id } | KeyEvent::Up { keys, id } => (keys, id),
+        };
+
+        let keys_str: String = keys
+            .iter()
+            .map(|&key| if key { 'X' } else { 'O' })
+            .collect();
+
+        match self {
+            KeyEvent::Down { .. } => format!("[{}]", keys_str),
+            KeyEvent::Up { .. } => format!("[{}]", keys_str),
+        }
+    }
 }
 
 struct EventVisitor;
@@ -210,32 +266,83 @@ pub struct ProfileRoot {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Profile {
-    pub version: u8,
-    pub name: String,
-    pub desc: String,
-    pub profile_tag: String,
-    pub led_enable: bool,
-    pub led_brightness: u8,
-    pub led_mode: u8,
-    pub pointer: u32,
-    pub primary: u32,
-    pub secondary: u32,
+    pub version: Option<u8>,
+    pub name: Option<String>,
+    pub desc: Option<String>,
+    pub profile_tag: Option<String>,
+    pub led_enable: Option<bool>,
+    pub led_brightness: Option<u8>,
+    pub led_mode: Option<u8>,
+    #[serde(
+        serialize_with = "serialize_color",
+        deserialize_with = "deserialize_color"
+    )]
+    pub pointer: Option<Color>,
+    #[serde(
+        serialize_with = "serialize_color",
+        deserialize_with = "deserialize_color"
+    )]
+    pub primary: Option<Color>,
+    #[serde(
+        serialize_with = "serialize_color",
+        deserialize_with = "deserialize_color"
+    )]
+    pub secondary: Option<Color>,
     pub attract_distance: Option<u32>,
     pub feedback_strength: Option<u32>,
     pub bounce_strength: Option<u32>,
     pub haptic_click_strength: Option<u32>,
-    pub button_a_idle: u32,
-    pub button_b_idle: u32,
-    pub button_c_idle: u32,
-    pub button_d_idle: u32,
-    pub button_a_press: u32,
-    pub button_b_press: u32,
-    pub button_c_press: u32,
-    pub button_d_press: u32,
-    pub keys: Vec<KeyDef>,
-    pub knob: Vec<Knob>,
-    pub gui_enable: bool,
-    pub audio: Audio,
+    #[serde(
+        serialize_with = "serialize_color",
+        deserialize_with = "deserialize_color"
+    )]
+    pub button_a_idle: Option<Color>,
+    #[serde(
+        serialize_with = "serialize_color",
+        deserialize_with = "deserialize_color"
+    )]
+    pub button_b_idle: Option<Color>,
+    #[serde(
+        serialize_with = "serialize_color",
+        deserialize_with = "deserialize_color"
+    )]
+    pub button_c_idle: Option<Color>,
+    #[serde(
+        serialize_with = "serialize_color",
+        deserialize_with = "deserialize_color"
+    )]
+    pub button_d_idle: Option<Color>,
+    #[serde(
+        serialize_with = "serialize_color",
+        deserialize_with = "deserialize_color"
+    )]
+    pub button_a_press: Option<Color>,
+    #[serde(
+        serialize_with = "serialize_color",
+        deserialize_with = "deserialize_color"
+    )]
+    pub button_b_press: Option<Color>,
+    #[serde(
+        serialize_with = "serialize_color",
+        deserialize_with = "deserialize_color"
+    )]
+    pub button_c_press: Option<Color>,
+    #[serde(
+        serialize_with = "serialize_color",
+        deserialize_with = "deserialize_color"
+    )]
+    pub button_d_press: Option<Color>,
+    pub keys: Option<Vec<KeyDef>>,
+    pub knob: Option<Vec<Knob>>,
+    pub gui_enable: Option<bool>,
+    pub audio: Option<Audio>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Color {
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -360,4 +467,71 @@ pub struct ScreenData {
     pub data2: Option<String>,
     pub data3: Option<String>,
     pub data4: Option<String>,
+}
+
+fn serialize_color<S>(color: &Option<Color>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match color {
+        Some(c) => serializer.serialize_some(&[c.r, c.g, c.b]),
+        None => serializer.serialize_none(),
+    }
+}
+
+fn deserialize_color<'de, D>(deserializer: D) -> Result<Option<Color>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct ColorVisitor;
+
+    impl<'de> Visitor<'de> for ColorVisitor {
+        type Value = Option<Color>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("a u32 color value, an array of 3 u8 values, or null")
+        }
+
+        fn visit_none<E>(self) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            Ok(None)
+        }
+
+        fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            deserializer.deserialize_any(self)
+        }
+
+        fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            let r = ((value >> 16) & 0xFF) as u8;
+            let g = ((value >> 8) & 0xFF) as u8;
+            let b = (value & 0xFF) as u8;
+            Ok(Some(Color { r, g, b }))
+        }
+
+        fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+        where
+            A: SeqAccess<'de>,
+        {
+            let r: u8 = seq
+                .next_element()?
+                .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+            let g: u8 = seq
+                .next_element()?
+                .ok_or_else(|| de::Error::invalid_length(1, &self))?;
+            let b: u8 = seq
+                .next_element()?
+                .ok_or_else(|| de::Error::invalid_length(2, &self))?;
+            Ok(Some(Color { r, g, b }))
+        }
+    }
+
+    deserializer.deserialize_option(ColorVisitor)
 }

@@ -177,6 +177,8 @@ impl Device {
                                 }
                             },
                             Err(e) => {
+                                dbg!(&line);
+                                dbg!(&e);
                                 error!("could not parse message: {}", e);
                             }
                         }
@@ -239,8 +241,8 @@ impl Device {
         }
     }
 
-    pub fn get_profile(&self, profile: String) -> Result<protocol::Profile, Error> {
-        let v = self.command_response(Command::GetProfile(profile))?;
+    pub fn get_profile(&self, profile: &str) -> Result<protocol::Profile, Error> {
+        let v = self.command_response(Command::GetProfile(profile.to_string()))?;
         match v {
             Message::Profile(profile_root) => Ok(profile_root.profile),
             Message::Error(e) => Err(Error::CommandError(e.error, e.msg)),
@@ -316,7 +318,7 @@ mod tests {
 
         // try to get a profile that doesn't exist
         assert!(matches!(
-            device.get_profile("This should not exist!*!*!*!!*".to_string()),
+            device.get_profile("This should not exist!*!*!*!!*"),
             Err(Error::CommandError(_, _))
         ));
     }
